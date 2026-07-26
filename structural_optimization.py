@@ -341,67 +341,6 @@ def adjust_interlayer_distance(cif_in, new_d, shift_frac=(0.0, 0.0)):
     return atoms, z_cut
 
 
-def adjust_interlayer_distance_homo(cif_in, new_d,shift_frac=(0.0, 0.0)):
-    atoms = read(cif_in)
-
-    # Get Cartesian z coordinates
-    z = atoms.positions[:, 2].copy()
-
-    # ========================
-    # Split the two layers
-    # ========================
-    z_mid = 0.5 * (z.max() + z.min())
-
-    mask_top = z > z_mid
-    mask_bot = z <= z_mid
-
-    z_top = z[mask_top]
-    z_bot = z[mask_bot]
-
-    # Lowest atom in the top layer
-    z_top_min = z_top.min()
-
-    # Highest atom in the bottom layer
-    z_bot_max = z_bot.max()
-
-    # Current interlayer distance
-    d_old = z_top_min - z_bot_max
-
-    # ========================
-    # Update the cell height
-    # ========================
-    cell = atoms.cell.array.copy()
-
-    c_old = np.linalg.norm(cell[2])
-    c_new = c_old - d_old + new_d
-
-    # Change the length of the c lattice vector
-    # while preserving its direction
-    cell[2] *= c_new / c_old
-
-    # ========================
-    # Shift only the top layer
-    # ========================
-    shift_z = new_d - d_old
-    atoms.positions[mask_top, 2] += shift_z
-
-    # Preserve the Cartesian coordinates
-    atoms.set_cell(cell, scale_atoms=False)
-
-    # ========================
-    # Compute z_cut for the
-    # updated structure
-    # ========================
-    z_top_min_new = atoms.positions[mask_top, 2].min()
-    z_bot_max_new = atoms.positions[mask_bot, 2].max()
-
-    z_cut = 0.5 * (z_top_min_new + z_bot_max_new)
-
-
-    atoms.wrap()
-
-    return atoms, z_cut
-
 disp_A1 = [0.0, 1/8, 1/6, 1/4, 1/3, 1/2, 2/3, 3/4, 5/6]
 disp_A2 = [0.0, 1/8, 1/6, 1/4, 1/3, 1/2, 2/3, 3/4, 5/6]
 
@@ -422,7 +361,7 @@ def xy_scan(d,db):
     return best_energy, best_shift
 
 def z_scan(db,xy_s=True):
-    d=1
+    d=0.5
     best_d=d
     best_energy=1000000
     best_shift = (0, 0)
@@ -560,7 +499,7 @@ if __name__ == "__main__":
     #db="bidb"
     initial_bilayer_link="As2+NbTe2_abcd2ae4ee5a0c7d+3a172789_stack.cif" #db="samba"
     #initial_bilayer_link="1Ca4I8B13N13-1_stack.cif" #db="hetdb"
-    #initial_bilayer_link="1C2O2V3-1-2-1_0_0_1--0.67_-0.33.cif" #db=bidb
+    #initial_bilayer_link="1C2O2V3-1-2-1_0_0_1--0.67_-0.33_stack.cif" #db=bidb
     atoms = read(initial_bilayer_link)
     
                    
