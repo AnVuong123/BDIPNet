@@ -1,0 +1,43 @@
+process_dir: processed  # directory for torch geometric processed dataset
+cache_dir: cache  # directory for infinite summation processed files
+checkpoint_dir: checkpoint  # directory for checkpoints
+output_dir: pre-trained  # directory for prediction results
+dataset: hetdb_stack3 #hetdb_stack50 hetdb_stack50 # hetmono50
+# JARVIS dataset: dft_3d
+# MP dataset: megnet
+target: target
+# JARVIS dataset entries: formation_energy_peratom, mbj_bandgap, optb88vdw_bandgap, optb88vdw_total_energy, ehull
+# MP dataset entries: e_form, gap pbe
+# If using custom dataset, please set this to the corresponding entry name, e.g., target
+
+atom_features: cgcnn
+
+epochs: 500
+batch_size: 128
+num_workers: 0
+weight_decay: 0.0
+learning_rate: 2e-4
+
+criterion: l1
+optimizer: adamw
+scheduler: step
+
+pin_memory: True
+write_checkpoint: False
+write_predictions: False
+store_outputs: False
+progress: False
+log_tensorboard: False
+
+normalize: True  # scaling the targets by their mean and std
+euclidean: True # disable infinite summation or not
+cutoff: 4.0  # local graph cutoff
+max_neighbors: 16
+R: 3  # half of the grid length
+
+model:
+  name: bdipnet
+  conv_layers: 3
+  rbf_min: -4.0
+  rbf_max: 4.0
+
