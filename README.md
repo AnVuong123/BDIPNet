@@ -3,7 +3,7 @@
 
 ![Overview of the Workflow](workflow1.jpg)
 
-## Structural Optimization
+## Structural Optimization Installation
 
 Structural optimization is performed using MatterSim. Create and activate the environment:
 
@@ -21,6 +21,7 @@ pip install torch==2.5.1 torchvision torchaudio \
 pip install mattersim ase pymatgen pandas numpy scipy dftd3
 ```
 
+## Running Structural Optimization
 Run the structural optimization script:
 
 ```bash
@@ -75,6 +76,7 @@ Install the compatible Pydantic version:
 ```bash
 pip install "pydantic==1.10.15"
 ```
+## Running BDIP-Net
 
 BDIP-Net is trained separately for each dataset and fold. For example, run fold 0 on the SAMBA dataset:
 
