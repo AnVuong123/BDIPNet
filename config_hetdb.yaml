@@ -2,7 +2,7 @@ process_dir: processed  # directory for torch geometric processed dataset
 cache_dir: cache  # directory for infinite summation processed files
 checkpoint_dir: checkpoint  # directory for checkpoints
 output_dir: pre-trained  # directory for prediction results
-dataset: hetdb_stack3 #hetdb_stack50 hetdb_stack50 # hetmono50
+dataset: hetdb_stack2 #hetdb_stack50 hetdb_stack50 # hetmono50
 # JARVIS dataset: dft_3d
 # MP dataset: megnet
 target: target
@@ -13,7 +13,7 @@ target: target
 atom_features: cgcnn
 
 epochs: 500
-batch_size: 128
+batch_size: 16
 num_workers: 0
 weight_decay: 0.0
 learning_rate: 2e-4

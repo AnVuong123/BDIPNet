@@ -1,6 +1,8 @@
 import csv
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
 import numpy as np
 import time
 from typing import Any, Dict, Union, Tuple
@@ -8,11 +10,6 @@ import pickle as pk
 import os
 import torch.distributed as dist
 
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score,
-)
 import torch
 from jarvis.core.atoms import Atoms
 
@@ -42,11 +39,17 @@ from ignite.contrib.handlers.tensorboard_logger import (
     global_step_from_engine,
 )
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
-
-from models.bidpnet import BDIPNet
+# from ignite.engine import (
+#     Events,
+#     Engine,
+#     # create_supervised_evaluator,
+#     # create_supervised_trainer,
+# )
+from models.bdipnet import BDIPNet
 
 import random
 
+plt.switch_backend("agg")
 
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 device = torch.device("cuda")
@@ -197,7 +200,8 @@ class SupervisedTrainer:
             epoch_loss = total_loss / max(num_batches, 1)
             self.state.output = epoch_loss
 
-            # Gọi scheduler sau mỗi epoch
+     
+     
             if self.scheduler is not None:
                 if isinstance(
                     self.scheduler,
@@ -250,29 +254,43 @@ def train_pyg(
         fold: int = None,
         db: str = "bidb"
 ):
-    print(config)
+   
     config = TrainingConfig(**config)
-    if not os.path.exists(config.output_dir):
-        os.makedirs(config.output_dir)
-    checkpoint_dir = os.path.join(config.output_dir, config.checkpoint_dir)
-    deterministic = False
+    if config.random_seed is not None:
+            deterministic = True
+            ignite.utils.manual_seed(config.random_seed)
+            np.random.seed(config.random_seed)
+            torch.manual_seed(config.random_seed)
+            torch.cuda.manual_seed(config.random_seed)
+            torch.cuda.manual_seed_all(config.random_seed)
+            random.seed(config.random_seed)
+            torch.backends.cudnn.benchmark = False
+            torch.backends.cudnn.deterministic = True
+
+    base_output_dir = config.output_dir
+    fold_output_dir = os.path.join(base_output_dir, f"{db}_fold_{fold}")
+    fold_cache_dir = os.path.join(fold_output_dir, config.cache_dir)
+    fold_process_dir = os.path.join(fold_output_dir, config.process_dir)
+
+    os.makedirs(fold_output_dir, exist_ok=True)
+    os.makedirs(fold_cache_dir, exist_ok=True)
+    os.makedirs(fold_process_dir, exist_ok=True)
+
+    checkpoint_dir = os.path.join(
+        fold_output_dir,
+        config.checkpoint_dir,
+    )
+
+
     print("config:")
     tmp = config.dict()
-    f = open(os.path.join(config.output_dir, "config.json"), "w")
-    f.write(json.dumps(tmp, indent=4))
-    f.close()
-    pprint.pprint(tmp)  # , sort_dicts=False)
-   
-    if config.random_seed is not None:
-        deterministic = True
-        ignite.utils.manual_seed(config.random_seed)
-        np.random.seed(config.random_seed)
-        torch.manual_seed(config.random_seed)
-        torch.cuda.manual_seed(config.random_seed)
-        torch.cuda.manual_seed_all(config.random_seed)
-        random.seed(config.random_seed)
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.deterministic = True
+
+    with open(
+        os.path.join(fold_output_dir, "config.json"),
+        "w",
+    ) as f:
+        json.dump(tmp, f, indent=4)
+    
 
     if data_root:
         dataset_info = loadjson(f"dataset_{db}_info_{fold}.json")
@@ -292,11 +310,10 @@ def train_pyg(
 
         config.keep_data_order = True
         config.target = "target"
-        #id_prop_dat = os.path.join(f"data/reg-bidb-stack-vasp/id_prop_{fold}.csv")
+
+        #id_prop_dat = os.path.join(f"data/reg-bidb-stack-vasp/id_prop_{db}_fold_{fold}.csv")
         #id_prop_dat = os.path.join(f"data/reg-hetdb-stack-vasp/id_prop_all_mono_fold_{fold}.csv")
         id_prop_dat = os.path.join(f"data/reg-samba-stack-vasp/id_prop_{db}_fold_{fold}.csv")
-    
-        
        
         with open(id_prop_dat, "r") as f:
             reader = csv.reader(f)
@@ -315,7 +332,9 @@ def train_pyg(
                 # Note using 500 angstrom as box size
                 atoms = Atoms.from_xyz(file_path, box_size=500)
             elif file_format == "pdb":
-             
+                # Note using 500 angstrom as box size
+                # Recommended install pytraj
+                # conda install -c ambermd pytraj
                 atoms = Atoms.from_pdb(file_path, max_lat=500)
             else:
                 raise NotImplementedError(
@@ -325,7 +344,7 @@ def train_pyg(
                 first_line = f.readline().strip()
             
             z_cut = float(first_line.split()[0])
-         
+            #print(f"z_cut: {z_cut} for file: {file_name}")
 
             atoms_dict = atoms.to_dict()
             atoms_dict["z_cut"] = z_cut
@@ -337,7 +356,7 @@ def train_pyg(
             dataset_array.append(info)
     else:
         dataset_array = None
-
+    
     print('output_dir train', config.output_dir)
     if not train_val_test_loaders:
         # use input standardization for all real-valued feature sets
@@ -349,9 +368,9 @@ def train_pyg(
             std
         ) = get_train_val_loaders(
             dataset=config.dataset,
-            root=config.output_dir,
-            cachedir=config.cache_dir,
-            processdir=config.process_dir,
+            root=fold_output_dir,
+            cachedir=fold_cache_dir,
+            processdir=fold_process_dir,
             dataset_array=dataset_array,
             target=config.target,
             n_train=config.n_train,
@@ -456,11 +475,23 @@ def train_pyg(
             "lr_scheduler": scheduler,
             "trainer": trainer,
         }
+        # handler = Checkpoint(
+        #     to_save,
+        #     DiskSaver(checkpoint_dir, create_dir=True, require_empty=False),
+        #     n_saved=5,
+        #     score_name="neg_mae",
+        #     global_step_transform=lambda *_: trainer.state.epoch,
+        # )
+        #evaluator.add_event_handler(Events.EPOCH_COMPLETED, handler)
 
-    if config.progress:
-        pbar = ProgressBar()
-        pbar.attach(trainer, output_transform=lambda x: {"loss": x})
+    # if config.progress:
+    #     pbar = ProgressBar()
+    #     pbar.attach(trainer, output_transform=lambda x: {"loss": x})
 
+    # history = {
+    #     "train": {m: [] for m in metrics.keys()},
+    #     "validation": {m: [] for m in metrics.keys()},
+    # }
 
     if config.store_outputs:
         eos = EpochOutputStore()
@@ -509,6 +540,43 @@ def train_pyg(
                 f"| LR: {current_lr:.8f}"
             )
 
+    # if config.n_early_stopping is not None:
+    #     def default_score_fn(engine):
+    #         score = engine.state.metrics["mae"]
+    #         return score
+
+    #     es_handler = EarlyStopping(
+    #         patience=config.n_early_stopping,
+    #         score_function=default_score_fn,
+    #         trainer=trainer,
+    #     )
+    #     evaluator.add_event_handler(Events.EPOCH_COMPLETED, es_handler)
+
+    # if config.log_tensorboard:
+
+    #     tb_logger = TensorboardLogger(
+    #         log_dir=os.path.join(config.output_dir, "tb_logs", "test")
+    #     )
+    #     for tag, evaluator in [
+    #         ("training", train_evaluator),
+    #         ("validation", evaluator),
+    #     ]:
+    #         tb_logger.attach_output_handler(
+    #             evaluator,
+    #             event_name=Events.EPOCH_COMPLETED,
+    #             tag=tag,
+    #             metric_names=["loss", "mae", "neg_mae"],
+    #             global_step_transform=global_step_from_engine(trainer),
+    #         )
+
+    # train the model!
+    # if not testing:
+    #     trainer.run(train_loader, max_epochs=config.epochs)
+
+    # if config.log_tensorboard:
+    #     test_loss = evaluator.state.metrics["loss"]
+    #     tb_logger.writer.add_hparams(config, {"hparam/test_loss": test_loss})
+    #     tb_logger.close()
 
     print("Testing!")
     net.eval()
@@ -542,7 +610,7 @@ def train_pyg(
 
     with torch.no_grad():
         for data in tqdm(test_loader, total=len(test_loader)):
-        
+            # Prediction của toàn bộ batch
             batch_predictions = net(data.to(device))
 
             batch_predictions = (
@@ -553,7 +621,7 @@ def train_pyg(
                 .reshape(-1)
             )
 
-       
+            # Target của toàn bộ batch
             batch_targets = (
                 data.label
                 .detach()
@@ -561,7 +629,8 @@ def train_pyg(
                 .numpy()
                 .reshape(-1)
             )
-        
+            mean_value = 0.0
+            std_value = 1.0
             # Denormalize predictions
             batch_predictions = (
                 batch_predictions * std_value + mean_value
@@ -578,7 +647,7 @@ def train_pyg(
             batch_ids = all_ids[id_index:id_index + batch_size]
             id_index += batch_size
 
-           
+            # extend thay vì append để list chỉ chứa scalar
             targets.extend(batch_targets.astype(float).tolist())
             predictions.extend(
                 batch_predictions.astype(float).tolist()
@@ -607,16 +676,12 @@ def train_pyg(
     targets = np.asarray(targets, dtype=np.float64)
     predictions = np.asarray(predictions, dtype=np.float64)
 
-  
-    test_mae = mean_absolute_error(targets, predictions)
-    test_mse = mean_squared_error(targets, predictions)
-    test_rmse = np.sqrt(test_mse)
-    test_r2 = r2_score(targets, predictions)
+    print("targets shape:", targets.shape)
+    print("predictions shape:", predictions.shape)
 
-    print(f"Test MAE : {test_mae:.6f}")
-    print(f"Test MSE : {test_mse:.6f}")
-    print(f"Test RMSE: {test_rmse:.6f}")
-    print(f"Test R2  : {test_r2:.6f}")
+    test_mae = mean_absolute_error(targets, predictions)
+
+    print("Test MAE:", test_mae)
 
     return test_mae
 

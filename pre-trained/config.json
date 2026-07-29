@@ -1,10 +1,10 @@
 {
-    "version": "NA",
-    "dataset": "bidb51",
+    "version": "7b4618b5d7d47d44aa227af7eebd549e88750fb0",
+    "dataset": "samba_full_stack_layer12",
     "target": "target",
     "atom_features": "cgcnn",
     "id_tag": "jid",
-    "random_seed": 123,
+    "random_seed": 92,
     "n_val": null,
     "n_test": null,
     "n_train": null,

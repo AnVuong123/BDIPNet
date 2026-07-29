@@ -2,7 +2,7 @@ process_dir: processed  # directory for torch geometric processed dataset
 cache_dir: cache  # directory for infinite summation processed files
 checkpoint_dir: checkpoint  # directory for checkpoints
 output_dir: pre-trained  # directory for prediction results
-dataset: samba_full_stack_layer12 #samba_full_stack_layer6 1/d +1/d**6 # samba_full_stack_layer7 1/d #samba_full_mono_layer9
+dataset: samaba_stack10 #hetdb_stack3
 # JARVIS dataset: dft_3d
 # MP dataset: megnet
 target: target
@@ -12,27 +12,29 @@ target: target
 
 atom_features: cgcnn
 
-epochs: 1
+epochs: 500
 batch_size: 128
 num_workers: 0
-weight_decay: 0
+weight_decay: 0.0
 learning_rate: 2e-4
 
 criterion: l1
 optimizer: adamw
 scheduler: step
 
-pin_memory: True
-write_checkpoint: False
-write_predictions: False
-store_outputs: False
-progress: False
+pin_memory: False
+write_checkpoint: True
+write_predictions: True
+store_outputs: True
+progress: True
 log_tensorboard: False
 
 normalize: True  # scaling the targets by their mean and std
 euclidean: True # disable infinite summation or not
 cutoff: 4.0  # local graph cutoff
 max_neighbors: 16
+infinite_funcs: ["zeta", "zeta", "exp"]
+infinite_params: [0.5, 3.0, 3.0]  # Coulomb, London dispersion, Pauli
 R: 3  # half of the grid length
 
 model:
@@ -40,4 +42,8 @@ model:
   conv_layers: 3
   rbf_min: -4.0
   rbf_max: 4.0
-
+  potentials: [-0.801, -0.074, 0.145]  # coefficients for infinite summations; should be negative, negative, positive w.r.t. their mathematical form
+#  potentials: [ -0.703, -0.0617, 0.142 ]
+#  potentials: [-0.816, -0.052, 0.149]
+  charge_map: False  # if including information of periodic table
+  transformer: False  # enable transformer structure for infinite potential summation; only works when euclidean is False

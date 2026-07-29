@@ -10,7 +10,7 @@ from pydantic.typing import Literal
 
 # from typing import List
 from models.base import BaseSettings
-from models.bidpnet import BDIPNetConfig
+from models.bdipnet import BDIPNetConfig
 
 try:
     VERSION = (
@@ -48,17 +48,17 @@ class TrainingConfig(BaseSettings):
     """Training config defaults and validation."""
 
     version: str = VERSION
-
-    # dataset configuration
+    
+        # dataset configuration
     dataset: str = "dft_3d"
     target: TARGET_ENUM = "formation_energy_peratom"
     atom_features: Literal["basic", "atomic_number", "cfid", "cgcnn"] = "cgcnn"
     id_tag: Literal["jid", "id"] = "jid"
-
-    # logging configuration
-
-    # training configuration
-    random_seed: Optional[int] = 123
+    
+        # logging configuration
+    
+        # training configuration
+    random_seed: Optional[int] = 92
     n_val: Optional[int] = None
     n_test: Optional[int] = None
     n_train: Optional[int] = None
