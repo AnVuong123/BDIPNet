@@ -75,3 +75,14 @@ Install the compatible Pydantic version:
 ```bash
 pip install "pydantic==1.10.15"
 ```
+
+BDIP-Net is trained separately for each dataset and fold. For example, run fold 0 on the SAMBA dataset:
+
+```bash
+python main.py \
+  --config config_samba_layer.yaml \
+  --output_dir pre-trained/ \
+  --fold 0
+```
+
+For another dataset, replace `config_samba_layer.yaml` with the corresponding configuration file.
