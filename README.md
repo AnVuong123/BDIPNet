@@ -5,7 +5,7 @@
 
 ## Structural Optimization Installation
 
-Structural optimization is performed using MatterSim. Create and activate the environment:
+Structural optimization is performed using MatterSim-D3. Create and activate the environment:
 
 ```bash
 conda create -n mattersim python=3.10 -y
@@ -21,7 +21,7 @@ pip install torch==2.5.1 torchvision torchaudio \
 pip install mattersim ase pymatgen pandas numpy scipy dftd3
 ```
 
-## Running Structural Optimization
+## Running Structural Optimization For An Initial Bilayer
 Run the structural optimization script:
 
 ```bash
